@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import test from "node:test";
-import { createServer } from "../server.js";
+import vercelChatHandler from "../api/chat.js";
+import { createServer } from "../local-server.js";
+
+function createMockResponse() {
+  return {
+    headers: {},
+    statusCode: 200,
+    setHeader(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
+    status(statusCode) {
+      this.statusCode = statusCode;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    },
+  };
+}
 
 async function withServer(options, run) {
   const server = createServer(options);
@@ -15,6 +35,27 @@ async function withServer(options, run) {
     await once(server, "close");
   }
 }
+
+test("Vercel API handler returns a clear configuration error when the key is missing", async () => {
+  const response = createMockResponse();
+  await vercelChatHandler({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: { message: "Hello" },
+  }, response);
+
+  assert.equal(response.statusCode, 503);
+  assert.match(response.body.error, /GROQ_API_KEY/);
+  assert.equal(response.headers["Cache-Control"], "no-store");
+});
+
+test("Vercel API handler rejects unsupported methods", async () => {
+  const response = createMockResponse();
+  await vercelChatHandler({ method: "GET", headers: {} }, response);
+
+  assert.equal(response.statusCode, 405);
+  assert.equal(response.headers.Allow, "POST");
+});
 
 test("serves the page and security headers", async () => {
   await withServer({}, async (baseUrl) => {

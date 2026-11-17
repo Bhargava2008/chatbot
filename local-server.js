@@ -2,13 +2,11 @@ import { createServer as createHttpServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { getChatReply } from "./chat-handler.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDirectory = path.join(root, "public");
-const maxMessageLength = 12_000;
 const maxRequestBytes = 64 * 1024;
-const requestTimeoutMs = 30_000;
-
 const staticFiles = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
@@ -96,59 +94,8 @@ export function createServer({ env = process.env, fetchImpl = fetch } = {}) {
       return;
     }
 
-    if (typeof body?.message !== "string" || body.message.trim().length === 0) {
-      sendJson(response, 400, { error: "Enter a message before sending." });
-      return;
-    }
-
-    if (body.message.length > maxMessageLength) {
-      sendJson(response, 400, { error: `Messages must be ${maxMessageLength} characters or fewer.` });
-      return;
-    }
-
-    if (!env.GROQ_API_KEY) {
-      sendJson(response, 503, { error: "The chatbot is not configured. Set GROQ_API_KEY on the server." });
-      return;
-    }
-
-    try {
-      const upstreamResponse = await fetchImpl("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: env.GROQ_MODEL || "openai/gpt-oss-120b",
-          messages: [{ role: "user", content: body.message }],
-        }),
-        signal: AbortSignal.timeout(requestTimeoutMs),
-      });
-
-      if (!upstreamResponse.ok) {
-        console.error(`Groq API returned HTTP ${upstreamResponse.status}.`);
-        sendJson(response, 502, { error: "The AI service could not complete the request. Please try again." });
-        return;
-      }
-
-      const result = await upstreamResponse.json();
-      const reply = result?.choices?.[0]?.message?.content;
-      if (typeof reply !== "string") {
-        console.error("Groq API returned an unexpected response shape.");
-        sendJson(response, 502, { error: "The AI service returned an unexpected response. Please try again." });
-        return;
-      }
-
-      sendJson(response, 200, { reply });
-    } catch (error) {
-      if (error.name === "TimeoutError" || error.name === "AbortError") {
-        console.error("Groq API request timed out.");
-        sendJson(response, 504, { error: "The AI service took too long to respond. Please try again." });
-        return;
-      }
-      console.error("Groq API request failed:", error);
-      sendJson(response, 502, { error: "Could not reach the AI service. Check the server connection and try again." });
-    }
+    const result = await getChatReply(body?.message, { env, fetchImpl });
+    sendJson(response, result.statusCode, result.body);
   });
 }
 
