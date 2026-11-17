@@ -19,7 +19,7 @@ The start command loads `.env` into the backend process. The API key must not be
 
 ## Deploy to Vercel
 
-The static page is served from `public/`, and `api/chat.js` is the Vercel serverless API function. In the Vercel project settings, add `GROQ_API_KEY` as an environment variable for the Production environment (and Preview if needed), then redeploy. Do not put the key in frontend code or commit it.
+The [Vercel configuration](./vercel.json) disables Node server auto-detection and serves `public/` as static files; `api/chat.js` is the Vercel serverless API function. In the Vercel project settings, add `GROQ_API_KEY` as an environment variable for the Production environment (and Preview if needed), then redeploy. Do not put the key in frontend code or commit it.
 
 ## Test
 
