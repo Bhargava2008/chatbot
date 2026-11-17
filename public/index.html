@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Simple Chatbot</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="chat">
+      <h1>Simple Chatbot</h1>
+      <form id="chat-form">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="1" maxlength="12000" placeholder="Type a message..." required></textarea>
+        <div class="meta">
+          <span id="input-count">0 characters · 0 lines</span>
+          <button id="send" type="submit">Send</button>
+        </div>
+      </form>
+      <section class="result" aria-live="polite" aria-busy="false">
+        <h2>Reply</h2>
+        <p id="status">Your reply will appear here.</p>
+        <pre id="reply" hidden></pre>
+        <p id="reply-count" class="count" hidden></p>
+      </section>
+    </main>
+  </body>
+</html>
